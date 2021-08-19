@@ -1,0 +1,47 @@
+Complete Installation Instructions for Ubuntu 20.04.
+
+Now I am no expert when it comes to this stuff but Kevin was nice enough to walk me through installation and setup and I feel I have a duty to share this information with anyone who might need it. 
+
+First things first lets Gitclone the Chiamon repo. There are lots of instructions on how to do that if you dont know how.
+
+Next Install Programs
+	Install Grafana following website instructions https://grafana.com/docs/grafana/latest/installation/debian/
+	Install mtail, prometheus, prometheus-node-exporter using the command `sudo apt install mtail prometheus prometheus-node-exporter`
+    Install Loki and Promtail and start their services. 
+I used a combination of Grafana supplied links (https://grafana.com/docs/loki/latest/installation/local/ and https://github.com/grafana/loki/releases) and the following websites for instructions. The Grafana sites got them installed and Loki service started, while the other websites showed me how to create and start them both as a service so they continually run in the background. One of my biggest issues when going through this installation process was not being to get all the services running or even sure if they were already running. So creating them as a service and being able to check their statuses really helped me: https://sbcode.net/grafana/install-loki-service/ and https://sbcode.net/grafana/install-promtail-service/
+
+    Install Chia_Exporter following: https://github.com/retzkek/chia_exporter#quick-install
+
+Edit Config Files
+Now lets edit the config files for Prometheus and Promtail.
+	First lets edit prometheus.yaml file at /etc/prometheus/ to match the one in the Chiamon repo. I had to use `sudo nano` to edit the file. Delete everyting in the YAML file then copy everything from the prometheus.yml in Chiamon repo and paste it into the prometheus.yml file. 
+	Now edit the Promtail config file that was created when you unzipped it. Mine was called promtail-local-config.yaml by default. Lets do the same thing with this config file as we did with the Prometheus one, delete everything in it and copy and paste everything from the promtail.yaml file from the Chiamon repo you downloaded. Now this step is important if you want Grafana to read your logs: under the `scrape_configs` there are 2 `__path__` directories. You must provide the paths to your debug.log for the `chia` job and to the plotter DIRECTORY under the `plotter` job for your plotting logs. Mine looked like `/home/mike/.chia/mainnet/log/debug.log` and `/home/mike/.chia/mainnet/plotter/*`
+	
+Next lets get Mtail service installed. Now I'm sure there is another way to do this but this is how I ended up going about it.
+	First lets move the mtail file from the Chiamon repo into `etc/mtail` directory which should already be created. I had to use `sudo mv` command here.
+	Next download and unzip Mtail following the commands below.
+	
+	`curl -OL https://github.com/google/mtail/releases/download/v3.0.0-rc46/mtail_3.0.0-rc46_Linux_x86_64.tar.gz`
+	`mkdir mtail`
+	`cd mtail`
+	`tar xzf ../mtail_3.0.0-rc46_Linux_x86_64.tar.gz`
+	`sudo cp mtail /usr/bin/`
+	`sudo systemctl restart mtail`
+	Now with Mtail installed, deploy Mtail using the command: `mtail --progs /etc/mtail --logs /your/location/of/debug.log`. I leave that terminal window open to ensure Mtail is running. Maybe there is another way? 
+
+At this point all the programs should be installed AND running and all the config files should be set.
+
+Now lets setup Grafana
+	Go to localhost:3000 on your web browser. If Grafana does not pull up, ensure Grafana service is running by using the command: `sudo systemctl status grafana-server`. If it shows `inactive` then Grafana is not running. Use `sudo systemctl start grafana-server` to start. Check status again to confirm and it will be obvious its active now. 
+	Now try localhost:3000 again and login. Login is admin and admin, and you will be asked to create new password.
+	Now we need to add Prometheus as a data source within Grafana. First check Prometheus is running by going to localhost:9090. Asssuming it is add it as a data source by hovering over the "gear" icon on the left hand side and clicking "data sources". Click "Add data source" and add Prometheus. You can leave all the settings as default BUT be sure to add the url http://localhost:9090 in the URL field. This tricked me, it looks like its entered but its greyed out and not actually entered. 
+	Click Save & Test and it should say "data source is working".
+	Now add Loki as a datasource on Grafana following the same instructions. You can confirm Loki is running by going to http://localhost:3100 first and use that same URL for the URL field.
+
+
+Final Step! Import the Grafana dashboard from the downloaded Chiamon repo. Hover over the "+" icon on the left hand side and click "import". On that page you can upload a JSON file - just point it to the downloaded one in the grafana/dashboards folder from the Chiamon repo.
+
+
+Assuming all services are running your chia dashboard on Grafana should be up and running! The logs and search time historgrams may take a minute to pull but everything else should be active.
+
+Thanks Kevin for this awesome setup!
